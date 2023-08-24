@@ -5,7 +5,7 @@ import requests
 import tarfile
 import pandas as pd
 from torch.utils.data import Dataset
-from torchvision.io import read_image
+from PIL import Image
 
 
 def download_imagenette(url, local_path="./"):
@@ -104,7 +104,7 @@ class Imagenette(Dataset):
 
     def __getitem__(self, idx):
         img_path = os.path.join(self.img_dir, self.info_csv.iloc[idx, 0])
-        image = read_image(img_path)
+        image = Image.open(img_path)
         label = self.info_csv.iloc[idx, self.labels_col]
 
         if self.transform:
