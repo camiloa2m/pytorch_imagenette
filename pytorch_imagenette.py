@@ -45,18 +45,18 @@ class Imagenette(Dataset):
     def __init__(self,
                  annotations_file,
                  img_dir,
-                 labels_col=1,
+                 numcol_labels=1,
                  train=True,
                  shuffle=True,
                  transform=None,
-                 target_transform=True):
+                 target_transform=None):
         """Imagenette Dataset.
 
         Args:
             annotations_file (string): Root directory of the CSV file that
                                 stores the labels and path information.
             img_dir (string): Root directory of the imagenette dataset.
-            labels_col (int, optional): Index of the column in the
+            numcol_labels (int, optional): Index of the column in the
                                 annotations_file that represents the labels.
                                 Defaults to 1.
             train (bool, optional): If True, creates dataset from training set;
@@ -69,14 +69,14 @@ class Imagenette(Dataset):
                                 takes a tensor image and returns a transformed
                                 version. For example, transforms.RandomCrop.
                                 Defaults to None.
-            target_transform (bool, optional): Boolean that defines if the
-                                original labels are transformed to integers,
-                                or if they are left unmodified.
-                                Defaults to True.
+            target_transform (callable, optional): A function/transformation
+                                that takes a integer label and returns a
+                                transformed version.
+                                Defaults to None.
         """
 
         self.info_csv = pd.read_csv(annotations_file)
-        self.labels_col = labels_col
+        self.numcol_labels = numcol_labels
         self.img_dir = img_dir
 
         if train:
@@ -91,21 +91,34 @@ class Imagenette(Dataset):
             self.info_csv = self.info_csv.reset_index(drop=True)
 
         self.transform = transform
+        self.target_transform = target_transform
 
         # Transformation to convert original labels to integers
-        self.old_lbs = self.info_csv.iloc[:, labels_col].unique()
+        self.lbl_dict = dict(
+            n01440764='tench',
+            n02102040='English springer',
+            n02979186='cassette player',
+            n03000684='chain saw',
+            n03028079='church',
+            n03394916='French horn',
+            n03417042='garbage truck',
+            n03425413='gas pump',
+            n03445777='golf ball',
+            n03888257='parachute'
+        )
+        self.old_lbs = sorted(self.info_csv.iloc[:, 1].unique())
         self.cat_to_num = dict(zip(self.old_lbs, range(len(self.old_lbs))))
-        self.target_transform = None
-        if target_transform:
-            self.target_transform = lambda x: self.cat_to_num[x]
+        col_num = self.numcol_labels
+        self.info_csv.iloc[:, col_num] = self.info_csv.iloc[:, col_num].apply(
+            lambda x: self.cat_to_num[x])
 
     def __len__(self):
         return len(self.info_csv)
 
     def __getitem__(self, idx):
         img_path = os.path.join(self.img_dir, self.info_csv.iloc[idx, 0])
-        image = Image.open(img_path)
-        label = self.info_csv.iloc[idx, self.labels_col]
+        image = Image.open(img_path).convert('RGB')
+        label = self.info_csv.iloc[idx, self.numcol_labels]
 
         if self.transform:
             image = self.transform(image)
